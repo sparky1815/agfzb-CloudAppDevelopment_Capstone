@@ -34,15 +34,15 @@
               </li>           
           </ul> 
           {% if user.is_authenticated %}
-          <span class="navbar-text mr-sm-2">{{ user.username }}</span><span class="navbar-text mr-sm-2"> <a href="#">Logout</a></span>
+          <span class="navbar-text mr-sm-2">{{ user.username }}</span><span class="navbar-text mr-sm-2"> <a href="{% url 'djangoapp:logout' %}">Logout</a></span>
           {% else %}
           <form class="form-inline my-2 my-lg-0" action="{% url 'djangoapp:login' %}" method="post">
             {% csrf_token %}
             <input class="form-control mr-sm-2" type="text" placeholder="Username" aria-label="username" name="username">
             <input class="form-control mr-sm-2" type="password" aria-label="password" name="password">
             <button class="btn btn-primary my-2 my-sm-0" type="submit">Login</button>
-            <button class="btn btn-link my-2 my-sm-0" type="submit">Sign Up</button>
           </form>
+          <a href="{% url 'djangoapp:registration' %}"><button class="btn btn-link my-2 my-sm-0">Sign Up</button></a>
           {% endif %}   
         </div>
       </nav>

@@ -1,8 +1,11 @@
 import requests
 import json
 # import related models here
-from .models import CarDealer
+from .models import CarDealer, DealerReview
 from requests.auth import HTTPBasicAuth
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+from ibm_watson import NaturalLanguageUnderstandingV1, ApiException
+from ibm_watson.natural_language_understanding_v1 import Features, EntitiesOptions, KeywordsOptions
 
 
 # Create a `get_request` to make HTTP GET requests
@@ -12,8 +15,7 @@ from requests.auth import HTTPBasicAuth
 def get_request(url, **kwargs):
     print(kwargs)
     print("GET from {} ".format(url))
-    try:
-        # Call get method of requests library with URL and parameters
+    try:        
         response = requests.get(url, headers={'Content-Type': 'application/json'},
                                     params=kwargs)
     except:
@@ -28,6 +30,11 @@ def get_request(url, **kwargs):
 # Create a `post_request` to make HTTP POST requests
 # e.g., response = requests.post(url, params=kwargs, json=payload)
 
+def post_request(url, json_payload, **kwargs):
+
+    response = requests.post(url, params=kwargs, json=json_payload)
+
+    return response
 
 # Create a get_dealers_from_cf method to get dealers from a cloud function
 # def get_dealers_from_cf(url, **kwargs):
@@ -54,10 +61,32 @@ def get_dealers_from_cf(url, **kwargs):
 
     return results
 
+def get_dealer_by_id(url, dealerId):
+    results = get_dealers_from_cf(url, dealerId=dealerId)
+    
+    return results
+
 # Create a get_dealer_reviews_from_cf method to get reviews by dealer id from a cloud function
 # def get_dealer_by_id_from_cf(url, dealerId):
 # - Call get_request() with specified arguments
 # - Parse JSON results into a DealerView object list
+
+def get_dealer_reviews_from_cf(url, dealer_id, **kwargs):
+    results = []
+    # Call get_request with a URL parameter
+    json_result = get_request(url, id=dealer_id)
+    if json_result:
+       
+        reviews = json_result["data"]["docs"]
+      
+        for review in reviews:
+            # Get its content in `doc` object
+            review_doc = review
+            sentimentcheck = analyze_review_sentiments(review_doc["review"])
+            reviews_obj = DealerReview(dealership=review_doc["dealership"], name=review_doc["name"], purchase=review_doc["purchase"], review=review_doc["review"], purchase_date=review_doc["purchase_date"], car_make=review_doc["car_make"], car_model=review_doc["car_model"], car_year=review_doc["car_year"], id=review_doc["id"], sentiment=sentimentcheck)
+            results.append(reviews_obj)
+
+    return results
 
 
 # Create an `analyze_review_sentiments` method to call Watson NLU and analyze text
@@ -66,4 +95,41 @@ def get_dealers_from_cf(url, **kwargs):
 # - Get the returned sentiment label such as Positive or Negative
 
 
+def analyze_review_sentiments(text):
+    url = "https://api.us-south.natural-language-understanding.watson.cloud.ibm.com/instances/a4b8ebe1-1a7c-420a-818e-3b3e95086d69"
+    apikey = "KhjJbJzXuhOLVO4BVb-ODjIU5msjp6mww9OwaedsJwpF"
 
+    authenticator = IAMAuthenticator(apikey)
+    natural_language_understanding = NaturalLanguageUnderstandingV1(
+        version='2022-04-07',
+        authenticator=authenticator)
+
+    natural_language_understanding.set_service_url(url)
+
+    try:
+        print("in TRY of analyze >> text = ", text)
+        response = natural_language_understanding.analyze(
+                text=text,
+                features=Features(
+            entities=EntitiesOptions(emotion=True, sentiment=True, limit=10),
+            keywords=KeywordsOptions(emotion=True, sentiment=True,
+                                    limit=10))).get_result()
+    except ApiException as ex:
+        response = ex
+        print("analyze_review_sentiments Error >> ", response)
+        sentiment = {}
+        sentiment["score"] = 0
+        sentiment["label"] = "neutral"
+        return sentiment
+
+    if ("keywords" in response) & (len(response["keywords"]) > 0):
+        print("response['keywords'] = ", response["keywords"])
+
+        sentiment = response["keywords"][0]["sentiment"]
+                
+    else:
+        sentiment = {}
+        sentiment["score"] = 0
+        sentiment["label"] = "neutral"
+    
+    return sentiment 

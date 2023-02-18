@@ -113,11 +113,8 @@ def get_dealerships(request):
         url = "https://us-east.functions.appdomain.cloud/api/v1/web/8cc9c51c-fd9c-4d76-847a-40b2e5f2a978/dealership-package/get-dealership"
         # Get dealers from the URL
         dealerships = get_dealers_from_cf(url)
-        # Concat all dealer's short name
-        dealer_names = ' '.join([dealer.short_name for dealer in dealerships])
-        # Return a list of dealer short name
-        rendered = render_to_string('djangoapp/index.html', {'dealer_names': dealer_names})
-        return HttpResponse(rendered)
+        return render(request, 'djangoapp/index.html', {'dealerships': dealerships})
+        
 
 
 # Create a `get_dealer_details` view to render the reviews of a dealer
@@ -126,14 +123,15 @@ def get_dealerships(request):
 
 def get_dealer_details(request, dealer_id):
     if request.method == "GET":
-        url = "https://us-east.functions.appdomain.cloud/api/v1/web/8cc9c51c-fd9c-4d76-847a-40b2e5f2a978/dealership-package/get-review"
-        
-        reviews = get_dealer_reviews_from_cf(url, dealer_id)
+        revurl = "https://us-east.functions.appdomain.cloud/api/v1/web/8cc9c51c-fd9c-4d76-847a-40b2e5f2a978/dealership-package/get-review"
+        dlrurl = "https://us-east.functions.appdomain.cloud/api/v1/web/8cc9c51c-fd9c-4d76-847a-40b2e5f2a978/dealership-package/get-dealership"
 
-        return render(request, 'djangoapp/dealer_details.html', {'reviews': reviews})
+        reviews = get_dealer_reviews_from_cf(revurl, dealer_id)
+        dealer = get_dealers_from_cf(dlrurl, dealerId=dealer_id)
+
+        return render(request, 'djangoapp/dealer_details.html', {'reviews': reviews, 'dealer_id': dealer_id, 'dealer': dealer})
        
-        #rendered = render_to_string('djangoapp/dealer_details.html', {'review_text': review_text})
-        #return HttpResponse(rendered)
+        
 
 # Create a `add_review` view to submit a review
 # def add_review(request, dealer_id):
@@ -141,7 +139,6 @@ def get_dealer_details(request, dealer_id):
 
 def add_review(request, dealer_id):
     context = {}
-
     
     if request.method == 'GET':
         user = request.user
@@ -152,14 +149,12 @@ def add_review(request, dealer_id):
 
             context["dealer_id"] = dealer_id
             context["cars"] = cars
-            context['dealer'] = dealership[0]
+            context['dealer'] = dealership
 
             return render(request, 'djangoapp/add_review.html', context)
         else: 
             return redirect("djangoapp:index")
         
-
-
     if request.method == 'POST':
         user = request.user
         #if user.is_authenticated:

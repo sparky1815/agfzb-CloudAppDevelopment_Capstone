@@ -31,7 +31,12 @@
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="/djangoapp/contact">Contact Us</a>
-              </li>           
+              </li> 
+              {% if user.is_authenticated and 'dealer' in request.path %} 
+              <li class="nav-item">
+                <a class="nav-link" href="/djangoapp/addreview/{{ dealer_id }}">Add Review</a>
+              </li> 
+              {% endif %}  
           </ul> 
           {% if user.is_authenticated %}
           <span class="navbar-text mr-sm-2">{{ user.username }}</span><span class="navbar-text mr-sm-2"> <a href="{% url 'djangoapp:logout' %}">Logout</a></span>
